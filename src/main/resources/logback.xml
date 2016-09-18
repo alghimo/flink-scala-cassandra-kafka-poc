@@ -1,0 +1,115 @@
+<configuration scan="true" packagingData="true">
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <!-- encoders are assigned the type
+             ch.qos.logback.classic.encoder.PatternLayoutEncoder by default -->
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <property name="LOG_HOME" value="D:/Projects/streaming-test/test-logs" />
+
+    <appender name="TRANS_PER_SEC"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/trans_per_sec/debug.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>
+                %d{yyyy-MM-dd HH:mm:ss} - %msg%n
+            </Pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- rollover daily -->
+            <fileNamePattern>${LOG_HOME}/trans_per_sec/%d{yyyyMMdd_HH}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>1MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="TIME_TO_SCORE"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/time_to_score/debug.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>
+                %d{yyyy-MM-dd HH:mm:ss} - %msg%n
+            </Pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- rollover daily -->
+            <fileNamePattern>${LOG_HOME}/time_to_score/%d{yyyyMMdd_HH}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>1MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="UPDATED_PER_SEC"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/updated_per_sec/debug.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>
+                %d{yyyy-MM-dd HH:mm:ss} - %msg%n
+            </Pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- rollover daily -->
+            <fileNamePattern>${LOG_HOME}/updated_per_sec/%d{yyyyMMdd_HH}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>1MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+    </appender>
+
+    <appender name="FAILED_UPDATES"
+              class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/failed_updates/debug.log</file>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <Pattern>
+                %d{yyyy-MM-dd HH:mm:ss} - %msg%n
+            </Pattern>
+        </encoder>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- rollover daily -->
+            <fileNamePattern>${LOG_HOME}/failed_updates/%d{yyyyMMdd_HH}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy
+                    class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>1MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+        </rollingPolicy>
+    </appender>
+
+    <logger name="org.alghimo.fraudpoc.transPerSecond" level="debug" additivity="false">
+        <appender-ref ref="TRANS_PER_SEC" />
+        <appender-ref ref="STDOUT" />
+    </logger>
+    <logger name="org.alghimo.fraudpoc.timeToScore" level="debug" additivity="false">
+        <appender-ref ref="TIME_TO_SCORE" />
+    </logger>
+    <logger name="org.alghimo.fraudpoc.history.savedPerSecond" level="debug" additivity="false">
+        <appender-ref ref="UPDATED_PER_SEC" />
+        <appender-ref ref="STDOUT" />
+    </logger>
+    <logger name="org.alghimo.fraudpoc.history.failedUpdates" level="debug" additivity="false">
+        <appender-ref ref="FAILED_UPDATES" />
+    </logger>
+
+    <root level="WARN">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+    <logger name="com.datastax.driver.core" level="ERROR"/>
+    <logger name="io.netty" level="ERROR"/>
+    <logger name="org.cassandraunit" level="ERROR"/>
+    <logger name="com.websudos.phantom" level="ERROR"/>
+    <logger name="org.apache.flink" level="ERROR"/>
+    <logger name="org.apache.kafka" level="ERROR"/>
+    <logger name="org.apache.kafka.clients.producer.ProducerConfig" level="ERROR"/>
+    <logger name="org.apache.kafka.clients.producer.ConsumerConfig" level="ERROR"/>
+</configuration>
