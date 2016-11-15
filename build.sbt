@@ -1,5 +1,8 @@
+import com.websudos.phantom.sbt.EmbeddedCassandra
+
 resolvers in ThisBuild ++= Seq(
-    "Apache Development Snapshot Repository" at "https://repository.apache.org/content/repositories/snapshots/", Resolver.mavenLocal,
+    "Apache Development Snapshot Repository" at "https://repository.apache.org/content/repositories/snapshots/",
+    Resolver.mavenLocal,
     "Java.net Maven2 Repository"       at "http://download.java.net/maven/2/",
     "Twitter Repository"               at "http://maven.twttr.com",
     Resolver.typesafeRepo("releases"),
@@ -22,9 +25,6 @@ val flinkVersion = "1.1.2"
 val flinkDependencies = Seq(
     "org.apache.flink" %% "flink-scala" % flinkVersion % "provided",
     "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % "provided",
-    /*"org.apache.kafka" % "kafka-clients" % "0.9.0.1",
-    ("org.apache.flink" %% "flink-connector-kafka-base" % flinkVersion).intransitive(),
-    ("org.apache.flink" %% "flink-connector-kafka-0.9" % flinkVersion).intransitive(),*/
     "org.apache.flink" % "flink-connector-kafka-0.9_2.11" % flinkVersion excludeAll(
         ExclusionRule(organization = "org.slf4j"),
         ExclusionRule(organization = "log4j")
@@ -33,9 +33,10 @@ val flinkDependencies = Seq(
         ExclusionRule(organization = "org.slf4j"),
         ExclusionRule(organization = "log4j")
     ),
-    "com.websudos"  % "phantom-dsl_2.11" % "1.22.0" excludeAll(
+    "com.websudos"  % "phantom-dsl_2.11" % "1.29.5" excludeAll(
         ExclusionRule(organization = "org.slf4j"),
-        ExclusionRule(organization = "log4j")
+        ExclusionRule(organization = "log4j"),
+        ExclusionRule(organization = "org.scalatest")
     ),
     "com.typesafe" % "config" % "1.3.0" excludeAll(
         ExclusionRule(organization = "org.slf4j"),
@@ -46,9 +47,14 @@ val flinkDependencies = Seq(
     "log4j" % "log4j" % "1.2.17"
 )
 
+val testDependencies = Seq(
+    "org.scalactic" %% "scalactic" % "3.0.0" % "test",
+    "org.scalatest" %% "scalatest" % "3.0.0" % "test"
+)
+
 lazy val root = (project in file(".")).
   settings(
-    libraryDependencies ++= flinkDependencies
+    libraryDependencies ++= flinkDependencies ++ testDependencies
   )
 
 mainClass in assembly := Some("org.alghimo.Job")
@@ -72,3 +78,24 @@ assemblyMergeStrategy in assembly := {
         val oldStrategy = (assemblyMergeStrategy in assembly).value
         oldStrategy(x)
 }
+
+// Manually setting the PhantomSbtPlugin
+Seq(
+    phantomCassandraConfig := None,
+    phantomCleanupEmbeddedCassandra := EmbeddedCassandra.cleanup(streams.value.log),
+    test in Test <<= (test in Test).dependsOn(phantomStartEmbeddedCassandra),
+    testQuick in Test <<= (testQuick in Test).dependsOn(phantomStartEmbeddedCassandra),
+    testOnly in Test <<= (testOnly in Test).dependsOn(phantomStartEmbeddedCassandra),
+    phantomCassandraTimeout := Some(60000),
+    phantomStartEmbeddedCassandra := EmbeddedCassandra.start(
+        streams.value.log,
+        phantomCassandraConfig.value,
+        phantomCassandraTimeout.value
+    ),
+    fork := true
+)
+
+logLevel in Test := Level.Error
+
+//phantomCassandraTimeout := Some(20000)
+//PhantomSbtPlugin.projectSettings

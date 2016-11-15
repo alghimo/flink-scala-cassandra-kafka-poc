@@ -10,7 +10,7 @@ import scala.util.{Failure, Success}
   * Created by alghimo on 9/12/2016.
   */
 class AccountToAccountTransactions extends CassandraTable[ConcreteAccountToAccountTransactions, AccountToAccountTransaction]{
-    object srcAccount    extends StringColumn(this) with PrimaryKey[String]
+    object srcAccount    extends StringColumn(this) with PartitionKey[String]
     object dstAccount    extends StringColumn(this) with PrimaryKey[String]
     object sumAmounts    extends DoubleColumn(this)
     object sumAmountsSqr extends DoubleColumn(this)

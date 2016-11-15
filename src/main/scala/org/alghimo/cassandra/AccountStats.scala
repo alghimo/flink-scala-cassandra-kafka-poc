@@ -8,7 +8,7 @@ import scala.util.{Failure, Success}
 
 class AccountStats extends CassandraTable[ConcreteAccountStats, AccountGlobalStats]{
 
-    object account       extends StringColumn(this) with PrimaryKey[String]
+    object account       extends StringColumn(this) with PartitionKey[String]
     object sumAmounts    extends DoubleColumn(this)
     object sumAmountsSqr extends DoubleColumn(this)
     object numTransacs   extends LongColumn(this)
@@ -37,7 +37,6 @@ abstract class ConcreteAccountStats extends AccountStats with RootConnector {
         currentStats.onComplete({
             case Failure(ex)   => statsPromise.failure(ex)
             case Success(None) => {
-                println("No previous stats - inserting for account " + t.account)
                 val res = insert()
                     .value(_.account, t.account)
                     .value(_.sumAmounts, t.sumAmounts)

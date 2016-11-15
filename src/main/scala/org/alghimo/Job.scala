@@ -9,6 +9,5 @@ object Job {
             println("Running in real-time mode")
             ScoringJob.run(args)
         }
-
     }
 }

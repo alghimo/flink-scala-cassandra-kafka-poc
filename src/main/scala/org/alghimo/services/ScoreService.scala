@@ -2,7 +2,7 @@ package org.alghimo.services
 
 import com.google.gson.Gson
 import com.websudos.phantom.dsl._
-import org.alghimo.cassandra.FraudPocDatabase
+import org.alghimo.cassandra.ProductionDatabase
 import org.alghimo.services.AccountsService.{bank, country}
 import org.slf4j.LoggerFactory
 
@@ -13,7 +13,7 @@ import scala.util.{Failure, Success}
 /**
   * Created by alghimo on 9/1/2016.
   */
-object ScoreService {
+object ScoreService extends ProductionDatabase {
     private final val logger = LoggerFactory.getLogger("org.alghimo.fraudpoc.timeToScore")
     import org.alghimo.models._
 
@@ -46,12 +46,12 @@ object ScoreService {
 
     private final val addHistoricalData: PartialFunction[EnrichedTransaction, Future[TransactionWithHistory]] = {
         case t: EnrichedTransaction => {
-            val acc2accStatsFuture     = FraudPocDatabase.accountToAccountTransactions.getByAccounts(t.srcAccount, t.dstAccount)
-            val accStatsFuture     = FraudPocDatabase.accountStats.getByAccount(t.srcAccount)
-            val acc2countryStatsFuture = FraudPocDatabase.accountToCountryTransactions.getByAccountAndCountry(t.srcAccount, t.dstCountry)
-            val allStatsFuture = for {
-                acc2accStats <- acc2accStatsFuture
-                accStats <- accStatsFuture
+            val acc2accStatsFuture     = database.accountToAccountTransactions.getByAccounts(t.srcAccount, t.dstAccount)
+            val accStatsFuture         = database.accountStats.getByAccount(t.srcAccount)
+            val acc2countryStatsFuture = database.accountToCountryTransactions.getByAccountAndCountry(t.srcAccount, t.dstCountry)
+            val allStatsFuture         = for {
+                acc2accStats     <- acc2accStatsFuture
+                accStats         <- accStatsFuture
                 acc2CountryStats <- acc2countryStatsFuture
             } yield (acc2accStats, accStats, acc2CountryStats)
 
@@ -60,23 +60,23 @@ object ScoreService {
             allStatsFuture.onComplete({
                 case Failure(ex) => transactionWithHistoryPromise.failure(ex)
                 case Success((acc2accOpt, accOpt, acc2countryOpt)) => {
-                    val acc2accStats = acc2accOpt.map(t => HistoricalStats(t.numTransacs, t.sumAmounts, t.sumAmountsSqr))
-                    val accStats = accOpt.map(t => HistoricalStats(t.numTransacs, t.sumAmounts, t.sumAmountsSqr))
+                    val acc2accStats     = acc2accOpt.map(t => HistoricalStats(t.numTransacs, t.sumAmounts, t.sumAmountsSqr))
+                    val accStats         = accOpt.map(t => HistoricalStats(t.numTransacs, t.sumAmounts, t.sumAmountsSqr))
                     val acc2countryStats = acc2countryOpt.map(t => HistoricalStats(t.numTransacs, t.sumAmounts, t.sumAmountsSqr))
 
                     transactionWithHistoryPromise.success(TransactionWithHistory(
-                        id = t.id,
-                        srcAccount = t.srcAccount,
-                        dstAccount = t.dstAccount,
-                        amount = t.amount,
-                        srcCountry = t.srcCountry,
-                        dstCountry = t.dstCountry,
-                        srcBank = t.srcBank,
-                        dstBank = t.dstBank,
+                        id           = t.id,
+                        srcAccount   = t.srcAccount,
+                        dstAccount   = t.dstAccount,
+                        amount       = t.amount,
+                        srcCountry   = t.srcCountry,
+                        dstCountry   = t.dstCountry,
+                        srcBank      = t.srcBank,
+                        dstBank      = t.dstBank,
                         accountStats = acc2accStats,
-                        globalStats = accStats,
+                        globalStats  = accStats,
                         countryStats = acc2countryStats,
-                        created = t.created
+                        created      = t.created
                     ))
                 }
             })
@@ -96,30 +96,28 @@ object ScoreService {
                       * If there are no stats from the source to the destination account,
                       * the global stats for the source account are used to calculate the risk on the amount.
                       */
-                    val amountToAccountRisk = amountRisk(t.amount, t.accountStats.orElse(t.globalStats))
+                    val amountToAccountRisk      = amountRisk(t.amount, t.accountStats.orElse(t.globalStats))
                     val numTransacsToAccountRisk = numTransacsRisk(t.accountStats)
-
-                    val accountRisk = amountToAccountRisk * 0.8 + numTransacsToAccountRisk * 0.2
+                    val accountRisk              = amountToAccountRisk * 0.8 + numTransacsToAccountRisk * 0.2
 
                     /**
                       * Calculate risk based on the destination country.
                       * If there are no stats from the source to the destination country,
                       * the global stats for the source account are used to calculate the risk on the amount.
                       */
-                    val amountToCountryRisk = amountRisk(t.amount, t.countryStats.orElse(t.globalStats))
+                    val amountToCountryRisk      = amountRisk(t.amount, t.countryStats.orElse(t.globalStats))
                     val numTransacsToCountryRisk = numTransacsRisk(t.countryStats)
-
-                    val countryRisk = amountToCountryRisk * 0.8 + numTransacsToCountryRisk * 0.2
+                    val countryRisk              = amountToCountryRisk * 0.8 + numTransacsToCountryRisk * 0.2
 
                     val now = System.nanoTime()
                     logger.info(s"ID: ${t.id} - Time to score: ${"%.2f".format((now - t.created)/1000000.0)}")
 
                     scorePromise.success(TransactionScore(
-                        id = t.id,
-                        srcAccount = t.srcAccount,
-                        dstAccount = t.dstAccount,
-                        amount = t.amount,
-                        score = accountRisk * 0.5 + countryRisk * 0.5,
+                        id                = t.id,
+                        srcAccount        = t.srcAccount,
+                        dstAccount        = t.dstAccount,
+                        amount            = t.amount,
+                        score             = accountRisk * 0.5 + countryRisk * 0.5,
                         timeToScoreMillis = "%.2f".format((System.nanoTime() - t.created) / 1000000.0)
                     ))
                 }
