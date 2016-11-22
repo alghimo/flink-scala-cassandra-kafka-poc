@@ -2,9 +2,9 @@ package org.alghimo
 
 import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 
-import com.google.gson.Gson
 import org.alghimo.models.TransactionScore
-import org.alghimo.services.ScoreService
+import org.alghimo.services.{ProductionScoreService, ScoreServiceProvider}
+import org.apache.flink.api.common.JobExecutionResult
 import org.apache.flink.api.common.accumulators.LongCounter
 import org.apache.flink.api.common.functions.RichMapFunction
 import org.apache.flink.configuration.Configuration
@@ -14,22 +14,28 @@ import org.slf4j.LoggerFactory
 /**
   * Created by alghimo on 9/13/2016.
   */
-object ScoringJob extends KafkaProperties with Configurable {
-    def run(args: Array[String] = Array.empty) {
+abstract class ConcreteScoringJob extends KafkaProperties with Configurable with ScoreServiceProvider {
+    def run(args: Array[String] = Array.empty): JobExecutionResult = {
         val env = StreamExecutionEnvironment.getExecutionEnvironment
 
+        val stream = doRun(env)
+        println("Got stream")
+        env.execute("Score Transactions")
+    }
+
+    def doRun(env: StreamExecutionEnvironment) = {
+        println("Method - doRun")
         env
             .addSource(kafkaStringConsumer(TRANSACTIONS_TO_SCORE_TOPIC))
-            .map(ScoreService.scoreTransaction _)
+            .map(scoreService.scoreTransaction _)
             .filter(!_.isEmpty)
             .map(scoreToJsonMapper)
             .addSink(kafkaStringProducer(SCORED_TRANSACTIONS_TOPIC))
 
-        // execute program
-        env.execute("Score Transactions")
+        env
     }
 
-    private final val scoreToJsonMapper = new RichMapFunction[Option[TransactionScore], String]() {
+    protected final val scoreToJsonMapper = new RichMapFunction[Option[TransactionScore], String]() {
         private final val logger       = LoggerFactory.getLogger("org.alghimo.fraudpoc.transPerSecond");
         private val scoredTransactions = new LongCounter()
         private lazy val startTime     = System.currentTimeMillis()
@@ -65,3 +71,5 @@ object ScoringJob extends KafkaProperties with Configurable {
         }
     }
 }
+
+object ScoringJob extends ConcreteScoringJob with ProductionScoreService

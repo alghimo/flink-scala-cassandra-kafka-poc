@@ -13,7 +13,7 @@ import scala.util.{Failure, Success}
 /**
   * Created by alghimo on 9/1/2016.
   */
-object ScoreService extends ProductionDatabase {
+class ConcreteScoreService extends ProductionDatabase {
     private final val logger = LoggerFactory.getLogger("org.alghimo.fraudpoc.timeToScore")
     import org.alghimo.models._
 
@@ -181,3 +181,4 @@ object ScoreService extends ProductionDatabase {
     }
 }
 
+object ScoreService extends ConcreteScoreService

@@ -2,18 +2,18 @@ package org.alghimo
 
 import java.util.concurrent.{ScheduledThreadPoolExecutor, TimeUnit}
 
-import com.google.gson.Gson
 import com.websudos.phantom.dsl
 import org.alghimo.cassandra.FraudPocDatabase
 import org.alghimo.models.{AccountGlobalStats, AccountToAccountTransaction, AccountToCountryTransaction, TransactionScore}
 import org.alghimo.services.AccountsService
+import org.apache.flink.api.common.JobExecutionResult
 import org.apache.flink.api.common.accumulators.LongCounter
 import org.apache.flink.api.common.functions.RichMapFunction
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.scala._
 import org.slf4j.LoggerFactory
 
-import scala.concurrent.{Future, Promise}
+import scala.concurrent.Future
 
 /**
   * Created by alghimo on 9/13/2016.
@@ -21,7 +21,7 @@ import scala.concurrent.{Future, Promise}
 object UpdateHistoryJob extends KafkaProperties with Configurable {
     private final val failedLogger = LoggerFactory.getLogger("org.alghimo.fraudpoc.history.failedUpdates")
 
-    def run(args: Array[String] = Array.empty) = {
+    def run(args: Array[String] = Array.empty): JobExecutionResult = {
         val env = StreamExecutionEnvironment.getExecutionEnvironment
 
         env

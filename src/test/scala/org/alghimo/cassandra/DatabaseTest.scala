@@ -1,23 +1,34 @@
 package org.alghimo.cassandra
 
 import com.websudos.phantom.dsl
+import org.alghimo.BeforeAndAfterEachFixtures
+import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, Matchers, OptionValues, Suite}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
-trait DatabaseTest extends Suite
-    with BeforeAndAfterAll
+trait DatabaseTest extends AsyncTestSuite
     with ScalaFutures
     with Matchers
     with OptionValues
+    with BeforeAndAfterEachFixtures
     with TestDatabaseProvider
-    with TestDefaults.connector.Connector {
-    override def beforeAll(): Unit = {
+    with TestDefaults.connector.Connector
+{
+    protected val autoCreateTimeout = 5 seconds
+    protected val autoDropTimeout   = 5 seconds
+
+    override def setupFixtures(): Unit = {
+        super.setupFixtures()
         import dsl.context
-        super.beforeAll()
         // Automatically create every single table in Cassandra.
-        Await.result(database.autocreate.future(), 5.seconds)
+        Await.result(database.autocreate.future(), autoCreateTimeout)
+    }
+
+    override def cleanupFixtures(): Unit = {
+        import dsl.context
+        Await.result(database.autodrop().future(), autoDropTimeout)
+        super.cleanupFixtures()
     }
 }

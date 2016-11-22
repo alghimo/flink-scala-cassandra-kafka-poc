@@ -25,6 +25,7 @@ class AccountStats extends CassandraTable[ConcreteAccountStats, AccountGlobalSta
 
 abstract class ConcreteAccountStats extends AccountStats with RootConnector {
     def store(t: AccountGlobalStats): Future[Boolean] = {
+
         val statsPromise = Promise[Boolean]()
         val currentStats = getByAccount(t.account)
 
@@ -37,11 +38,12 @@ abstract class ConcreteAccountStats extends AccountStats with RootConnector {
         currentStats.onComplete({
             case Failure(ex)   => statsPromise.failure(ex)
             case Success(None) => {
-                val res = insert()
-                    .value(_.account, t.account)
-                    .value(_.sumAmounts, t.sumAmounts)
-                    .value(_.sumAmountsSqr, t.sumAmountsSqr)
-                    .value(_.numTransacs, t.numTransacs)
+                val res = update()
+                    .where(_.account eqs t.account)
+                    .modify(_.sumAmounts setTo t.sumAmounts)
+                    .and(_.sumAmountsSqr setTo t.sumAmountsSqr)
+                    .and(_.numTransacs setTo t.numTransacs)
+                    .consistencyLevel_=(ConsistencyLevel.ALL)
                     .future()
 
                 handleUpdate(res, isInsert = true)
@@ -52,6 +54,7 @@ abstract class ConcreteAccountStats extends AccountStats with RootConnector {
                     .modify(_.sumAmounts setTo (accStats.sumAmounts + t.sumAmounts))
                     .and(_.sumAmountsSqr setTo (accStats.sumAmountsSqr + t.sumAmountsSqr))
                     .and(_.numTransacs setTo (accStats.numTransacs + t.numTransacs))
+                    .consistencyLevel_=(ConsistencyLevel.ALL)
                     .future()
 
                 handleUpdate(res, isInsert = false)
@@ -64,6 +67,7 @@ abstract class ConcreteAccountStats extends AccountStats with RootConnector {
     def getByAccount(src: String): Future[Option[AccountGlobalStats]] = {
         select
             .where(_.account eqs src)
+            .consistencyLevel_=(ConsistencyLevel.ALL)
             .one()
     }
 }

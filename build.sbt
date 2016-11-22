@@ -49,7 +49,10 @@ val flinkDependencies = Seq(
 
 val testDependencies = Seq(
     "org.scalactic" %% "scalactic" % "3.0.0" % "test",
-    "org.scalatest" %% "scalatest" % "3.0.0" % "test"
+    "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+    "net.manub" %% "scalatest-embedded-kafka" % "0.10.0" % "test"
+    //"org.apache.curator" % "curator-test" % "2.8.0" % "test",
+    //"com.101tec" % "zkclient" % "0.7" % "test",
 )
 
 lazy val root = (project in file(".")).
@@ -79,6 +82,8 @@ assemblyMergeStrategy in assembly := {
         oldStrategy(x)
 }
 
+val cassandraLogger = sbt.Logger.Null
+
 // Manually setting the PhantomSbtPlugin
 Seq(
     phantomCassandraConfig := None,
@@ -88,7 +93,7 @@ Seq(
     testOnly in Test <<= (testOnly in Test).dependsOn(phantomStartEmbeddedCassandra),
     phantomCassandraTimeout := Some(60000),
     phantomStartEmbeddedCassandra := EmbeddedCassandra.start(
-        streams.value.log,
+        cassandraLogger,
         phantomCassandraConfig.value,
         phantomCassandraTimeout.value
     ),
@@ -96,6 +101,6 @@ Seq(
 )
 
 logLevel in Test := Level.Error
-
+parallelExecution in Test := false
 //phantomCassandraTimeout := Some(20000)
 //PhantomSbtPlugin.projectSettings
