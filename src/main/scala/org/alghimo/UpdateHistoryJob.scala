@@ -18,7 +18,7 @@ import scala.concurrent.Future
 /**
   * Created by alghimo on 9/13/2016.
   */
-object UpdateHistoryJob extends KafkaProperties with Configurable {
+abstract class AbstractUpdateHistoryJob extends KafkaProperties with Configurable {
     private final val failedLogger = LoggerFactory.getLogger("org.alghimo.fraudpoc.history.failedUpdates")
 
     def run(args: Array[String] = Array.empty): JobExecutionResult = {
@@ -26,6 +26,7 @@ object UpdateHistoryJob extends KafkaProperties with Configurable {
 
         env
             .addSource(kafkaStringConsumer(SCORED_TRANSACTIONS_TOPIC))
+
             .map(gson.fromJson(_, classOf[TransactionScore]))
             .filter(_.score < 0.8)
             .map(updateStatsFromScore)
@@ -102,3 +103,5 @@ object UpdateHistoryJob extends KafkaProperties with Configurable {
         }
     }
 }
+
+object UpdateHistoryJob extends AbstractUpdateHistoryJob with ProductionKafkaProperties

@@ -16,18 +16,18 @@ trait DatabaseTest extends AsyncTestSuite
     with TestDatabaseProvider
     with TestDefaults.connector.Connector
 {
+    import dsl.context
     protected val autoCreateTimeout = 5 seconds
     protected val autoDropTimeout   = 5 seconds
 
     override def setupFixtures(): Unit = {
         super.setupFixtures()
-        import dsl.context
+
         // Automatically create every single table in Cassandra.
         Await.result(database.autocreate.future(), autoCreateTimeout)
     }
 
     override def cleanupFixtures(): Unit = {
-        import dsl.context
         Await.result(database.autodrop().future(), autoDropTimeout)
         super.cleanupFixtures()
     }

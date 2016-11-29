@@ -1,70 +1,65 @@
 package org.alghimo
 
-import net.manub.embeddedkafka.{Consumers, EmbeddedKafka, EmbeddedKafkaConfig}
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{AsyncTestSuite, Matchers, OptionValues}
+import info.batey.kafka.unit.KafkaUnit
+import kafka.common.KafkaException
+import kafka.producer.KeyedMessage
+import kafka.server.KafkaConfig
+import org.apache.kafka.common.protocol.Errors
 
-import scala.concurrent.ExecutionContext
+import scala.collection.JavaConversions._
+//import net.manub.embeddedkafka.{Consumers, EmbeddedKafka, EmbeddedKafkaConfig}
 
 /**
   * Created by alghimo on 11/20/2016.
   */
 trait KafkaTest
-    extends AsyncTestSuite
+    extends BeforeAndAfterEachFixtures
     with TestKafkaProperties
-    with EmbeddedKafka
-    with ScalaFutures
-    with Matchers
-    with OptionValues
-    with BeforeAndAfterEachFixtures
-    with Consumers
 {
-    override implicit val executionContext = ExecutionContext.fromExecutorService(executorService)
-
-    /*val serialExecutionContext2: ExecutionContext = new org.scalatest.concurrent.SerialExecutionContext
-    implicit def executionContext2: ExecutionContext = serialExecutionContext2*/
-
     def kafkaMessages: Map[String, Seq[String]] = Map()
 
-    override def setupFixtures(): Unit = {
-        implicit val config = EmbeddedKafkaConfig(kafkaPort = KAFKA_PORT)
-        super.setupFixtures()
-        EmbeddedKafka.start()
-        for (topic <- kafkaMessages.keySet) {
-            println(s"Creating topic - ${topic}")
-            createCustomTopic(topic)
+    lazy val kafkaUnitServer = new KafkaUnit(s"localhost:${ZOOKEEPER_PORT}", s"localhost:${KAFKA_PORT}")
+
+    def kafkaConfig = KafkaConfig.fromProps(kafkaProperties)
+
+    val errorsCallback = (errors: scala.collection.Map[String, Errors]) => {
+        if (!errors.isEmpty) {
+            throw new KafkaException("Unable to create topics. Errors: " + errors.valuesIterator.toArray.mkString("\n"))
         }
-        /*createCustomTopic("test_topic")
-        publishStringMessageToKafka("test_topic", "test message")
-        println("setup - consumed message: " + consumeFirstStringMessageFrom("foo"))*/
-        for ((topic, messages) <- kafkaMessages) {
-            messages.foreach(publishStringMessageToKafka(topic, _))
+    }
+
+    override def setupFixtures(): Unit = {
+        super.setupFixtures()
+        try {
+            kafkaUnitServer.startup()
+
+            for (topic <- kafkaMessages.keySet) {
+                kafkaUnitServer.createTopic(topic)
+            }
+
+
+            for ((topic, messages) <- kafkaMessages) {
+                val keyedMessages = messages.map { message =>
+                    new KeyedMessage[String, String](topic, message)
+                }
+                kafkaUnitServer.sendMessages(keyedMessages.head, keyedMessages.tail:_*)
+            }
+        } catch {
+            case e: Exception => fail(s"Error preparing kafka fixtures - exception [${e.getClass.toString}]: ${e.getMessage}")
         }
     }
 
     override def cleanupFixtures(): Unit = {
-        /*withStringConsumer { consumer =>
-            import net.manub.embeddedkafka.ConsumerExtensions._
-            val topic = kafkaMessages.keySet.head
-            consumer.consumeLazily(topic).foreach(m => println(s"Consumed message from ${topic}: ${m}"))
-            val topicMessages = consumer
-
-        }*/
-        EmbeddedKafka.stop()
+        try {
+            //kafkaServer.adminManager.deleteTopics(5000, kafkaMessages.keySet, errorsCallback)
+            kafkaUnitServer.shutdown()
+        } catch {
+            case e: Exception => fail(s"Error cleaning up kafka fixtures - Got exception [${e.getClass.toString}]: ${e.getMessage}")
+        }
         super.cleanupFixtures()
     }
 
-    def assertMessagesInTopic(topic: String, messages: Seq[String]) = {
-        withStringConsumer { consumer =>
-            import net.manub.embeddedkafka.ConsumerExtensions._
-
-            val topicMessages = consumer
-                .consumeLazily(topic)
-                .take(messages.size)
-
-            topicMessages
-                .foreach { message => println(s"Message in topic ${topic}: ${message}") }
-            topicMessages should be (messages)
-        }
+    def getMessagesInTopic(topic: String, expectedMessages: Int): Seq[String] = {
+        kafkaUnitServer.readMessages(topic, expectedMessages)
     }
 }

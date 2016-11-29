@@ -14,17 +14,17 @@ import org.slf4j.LoggerFactory
 /**
   * Created by alghimo on 9/13/2016.
   */
-abstract class ConcreteScoringJob extends KafkaProperties with Configurable with ScoreServiceProvider {
+abstract class AbstractScoringJob extends KafkaProperties with ScoreServiceProvider with java.io.Serializable {
+    protected def getExecutionEnv(): StreamExecutionEnvironment
     def run(args: Array[String] = Array.empty): JobExecutionResult = {
-        val env = StreamExecutionEnvironment.getExecutionEnvironment
+        val env = getExecutionEnv()
 
         val stream = doRun(env)
-        println("Got stream")
+
         env.execute("Score Transactions")
     }
 
     def doRun(env: StreamExecutionEnvironment) = {
-        println("Method - doRun")
         env
             .addSource(kafkaStringConsumer(TRANSACTIONS_TO_SCORE_TOPIC))
             .map(scoreService.scoreTransaction _)
@@ -72,4 +72,6 @@ abstract class ConcreteScoringJob extends KafkaProperties with Configurable with
     }
 }
 
-object ScoringJob extends ConcreteScoringJob with ProductionScoreService
+object ScoringJob extends AbstractScoringJob with ProductionKafkaProperties with ProductionScoreService with java.io.Serializable {
+    override protected def getExecutionEnv(): StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+}

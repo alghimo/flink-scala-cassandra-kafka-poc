@@ -20,12 +20,12 @@ scalaVersion in ThisBuild := "2.11.8"
 
 fork in run := true
 
-val flinkVersion = "1.1.2"
+val flinkVersion = "1.1.3"
 
 val flinkDependencies = Seq(
     "org.apache.flink" %% "flink-scala" % flinkVersion % "provided",
     "org.apache.flink" %% "flink-streaming-scala" % flinkVersion % "provided",
-    "org.apache.flink" % "flink-connector-kafka-0.9_2.11" % flinkVersion excludeAll(
+    "org.apache.flink" %% "flink-connector-kafka-0.9" % flinkVersion excludeAll(
         ExclusionRule(organization = "org.slf4j"),
         ExclusionRule(organization = "log4j")
     ),
@@ -50,9 +50,12 @@ val flinkDependencies = Seq(
 val testDependencies = Seq(
     "org.scalactic" %% "scalactic" % "3.0.0" % "test",
     "org.scalatest" %% "scalatest" % "3.0.0" % "test",
-    "net.manub" %% "scalatest-embedded-kafka" % "0.10.0" % "test"
-    //"org.apache.curator" % "curator-test" % "2.8.0" % "test",
-    //"com.101tec" % "zkclient" % "0.7" % "test",
+    "info.batey.kafka" % "kafka-unit" % "0.6" % "test"
+
+    /*"org.apache.kafka" % "kafka_2.11" % "0.10.1.0" % "test",
+    "org.apache.curator" % "curator-test" % "3.2.1" % "test"*/
+    //"com.github.sakserv" % "hadoop-mini-clusters-kafka" % "0.1.8" % "test"
+    //"net.manub" %% "scalatest-embedded-kafka" % "0.10.0" % "test"
 )
 
 lazy val root = (project in file(".")).
@@ -62,6 +65,7 @@ lazy val root = (project in file(".")).
 
 mainClass in assembly := Some("org.alghimo.Job")
 
+//unmanagedBase in Test := baseDirectory.value / "lib"
 // make run command include the provided dependencies
 runMain in Compile <<= Defaults.runMainTask(fullClasspath in Compile, runner in (Compile, run))
 

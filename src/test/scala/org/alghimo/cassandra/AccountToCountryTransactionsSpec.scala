@@ -1,35 +1,43 @@
 package org.alghimo.cassandra
 
 import org.alghimo.models.AccountToCountryTransaction
-import org.scalatest.AsyncFlatSpec
+import org.scalatest.{AsyncFlatSpec, Inside}
 
 /**
   * Created by alghimo on 11/15/2016.
   */
-class AccountToCountryTransactionsSpec   extends AsyncFlatSpec with DatabaseTest {
-
+class AccountToCountryTransactionsSpec
+    extends AsyncFlatSpec
+    with DatabaseTest
+    with Inside
+{
     behavior of "AccountStats"
 
     it should "eventually insert the new account to country transactions and retrieve the stats" in {
-        val amounts = Seq(5.0, 10.0, 25.0)
-        val sumAmounts = amounts.sum
-        val sumAmountsSqr = amounts.map(amount => amount * amount).sum
-        val acc2CountryStats = AccountToCountryTransaction(
-            srcAccount    = "BE1234",
-            dstCountry    = "NL",
-            sumAmounts    = sumAmounts,
-            sumAmountsSqr = sumAmountsSqr,
-            numTransacs   = amounts.size
-        )
+        val acc2CountryStats = {
+            val amounts       = Seq(5.0, 10.0, 25.0)
+            val sumAmounts    = amounts.sum
+            val sumAmountsSqr = amounts.map(amount => amount * amount).sum
+
+            AccountToCountryTransaction(
+                srcAccount    = "BE1234",
+                dstCountry    = "NL",
+                sumAmounts    = sumAmounts,
+                sumAmountsSqr = sumAmountsSqr,
+                numTransacs   = amounts.size
+            )
+        }
 
         val futureStats = for {
-            store <- database.accountToCountryTransactions.store(acc2CountryStats)
+            stored    <- database.accountToCountryTransactions.store(acc2CountryStats)
             readStats <- database.accountToCountryTransactions.getByAccountAndCountry(acc2CountryStats.srcAccount, acc2CountryStats.dstCountry)
         } yield readStats
 
         futureStats map { maybeStats =>
-            assert(maybeStats.isDefined, "AccountToCountryTransactions should not be empty")
+            maybeStats shouldBe defined
+
             val stats = maybeStats.get
+
             stats.srcAccount shouldEqual acc2CountryStats.srcAccount
             stats.dstCountry shouldEqual acc2CountryStats.dstCountry
             stats.sumAmounts shouldEqual acc2CountryStats.sumAmounts
@@ -74,13 +82,17 @@ class AccountToCountryTransactionsSpec   extends AsyncFlatSpec with DatabaseTest
         } yield readStats
 
         futureStats map { maybeStats =>
-            assert(maybeStats.isDefined, "AccountToCountryTransaction should not be empty")
+            maybeStats shouldBe defined
             val stats = maybeStats.get
-            stats.srcAccount shouldEqual resultingStats.srcAccount
-            stats.dstCountry shouldEqual resultingStats.dstCountry
-            stats.sumAmounts shouldEqual resultingStats.sumAmounts
-            stats.sumAmountsSqr shouldEqual resultingStats.sumAmountsSqr
-            stats.numTransacs shouldEqual resultingStats.numTransacs
+
+            inside(stats) {
+                case AccountToCountryTransaction(srcAccount, dstCountry, sumAmounts, sumAmountsSqr, numTransacs) =>
+                    srcAccount    shouldEqual resultingStats.srcAccount
+                    dstCountry    shouldEqual resultingStats.dstCountry
+                    sumAmounts    shouldEqual resultingStats.sumAmounts
+                    sumAmountsSqr shouldEqual resultingStats.sumAmountsSqr
+                    numTransacs   shouldEqual resultingStats.numTransacs
+            }
         }
     }
 }

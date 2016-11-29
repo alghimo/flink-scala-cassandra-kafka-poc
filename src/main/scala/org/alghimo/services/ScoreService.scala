@@ -13,7 +13,7 @@ import scala.util.{Failure, Success}
 /**
   * Created by alghimo on 9/1/2016.
   */
-class ConcreteScoreService extends ProductionDatabase {
+class ConcreteScoreService extends ProductionDatabase with java.io.Serializable {
     private final val logger = LoggerFactory.getLogger("org.alghimo.fraudpoc.timeToScore")
     import org.alghimo.models._
 
@@ -181,4 +181,4 @@ class ConcreteScoreService extends ProductionDatabase {
     }
 }
 
-object ScoreService extends ConcreteScoreService
+object ScoreService extends ConcreteScoreService with java.io.Serializable

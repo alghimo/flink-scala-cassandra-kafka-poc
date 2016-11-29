@@ -3,7 +3,7 @@ package org.alghimo.services
 import com.google.gson.Gson
 import org.alghimo.cassandra._
 import org.alghimo.models.{AccountGlobalStats, AccountToAccountTransaction, AccountToCountryTransaction, BaseTransaction}
-import org.scalatest.AsyncFlatSpec
+import org.scalatest.{AsyncFlatSpec, OptionValues}
 
 /**
   * Created by alghimo on 11/18/2016.
@@ -13,6 +13,7 @@ class ScoreServiceSpec extends AsyncFlatSpec
     with WithAccountStatsData
     with WithAccountToAccountTransactionsData
     with WithAccountToCountryTransactionsData
+    with OptionValues
 {
     override def accountGlobalStatsData: Seq[AccountGlobalStats] = Seq(
         AccountGlobalStats(account = "BEXX300", sumAmounts = 10.0, sumAmountsSqr = 100.0, numTransacs = 1),
@@ -41,37 +42,33 @@ class ScoreServiceSpec extends AsyncFlatSpec
         val gson = new Gson()
         val newTransaction = BaseTransaction(id = 1L, srcAccount = "NLXX300", dstAccount = "NLXX654987", amount = 3.0)
         val maybeScore = scoreService.scoreTransaction(gson.toJson(newTransaction))
-        assert(maybeScore.isDefined)
-        val scoredTransaction = maybeScore.get
 
-        assert(maybeScore.get.score >= 0.0 && maybeScore.get.score <= 1.0, "Risk for the transaction should be >= 0")
+        maybeScore.value.score should (be >= 0.0 and be <= 1.0)
     }
 
     it should "calculate the risk using account to account and account to country stats when available" in {
-        val gson = new Gson()
+        val gson           = new Gson()
         val newTransaction = BaseTransaction(id = 1L, srcAccount = "NLXX300", dstAccount = "NLXX6543", amount = 12.0)
-        val maybeScore = scoreService.scoreTransaction(gson.toJson(newTransaction))
-        assert(maybeScore.isDefined)
-        val score = maybeScore.get.score
+        val maybeScore     = scoreService.scoreTransaction(gson.toJson(newTransaction))
+
         // actual score = 0.15759073937440737
-        assert(score > 0.1575 && score < 0.1576)
+        maybeScore.value.score should (be >= 0.1575 and be <= 0.1576)
     }
 
     it should "calculate the risk using account stats as fallback for transactions to new a new account / country" in {
-        val gson = new Gson()
+        val gson           = new Gson()
         val newTransaction = BaseTransaction(id = 1L, srcAccount = "NLXX300", dstAccount = "NLZZ9876", amount = 12.0)
-        val maybeScore = scoreService.scoreTransaction(gson.toJson(newTransaction))
-        assert(maybeScore.isDefined)
-        val score = maybeScore.get.score
+        val maybeScore     = scoreService.scoreTransaction(gson.toJson(newTransaction))
+
         // actual score = 0.4358300824489153
-        assert(score > 0.43582 && score < 0.43584)
+        maybeScore.value.score should (be > 0.43582 and be < 0.43584)
     }
 
     it should "assign 100% risk when there is no historical data" in {
-        val gson = new Gson()
+        val gson           = new Gson()
         val newTransaction = BaseTransaction(id = 1L, srcAccount = "NLNW300123456", dstAccount = "NLZZ98765432", amount = 10.0)
-        val maybeScore = scoreService.scoreTransaction(gson.toJson(newTransaction))
-        assert(maybeScore.isDefined)
-        assert(maybeScore.get.score == 1.0)
+        val maybeScore     = scoreService.scoreTransaction(gson.toJson(newTransaction))
+
+        maybeScore.value.score shouldEqual 1.0
     }
 }

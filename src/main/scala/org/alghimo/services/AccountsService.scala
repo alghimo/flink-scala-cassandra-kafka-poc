@@ -3,7 +3,7 @@ package org.alghimo.services
 /**
   * Created by alghimo on 9/1/2016.
   */
-object AccountsService {
+object AccountsService extends java.io.Serializable {
     private final val UNKNOWN_BANK = "UNK"
 
     /**

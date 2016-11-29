@@ -25,3 +25,4 @@ resolvers ++= Seq(
 
 // And finally the plugin dependency itself
 addSbtPlugin("com.websudos" %% "phantom-sbt" % "1.27.0")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.0")

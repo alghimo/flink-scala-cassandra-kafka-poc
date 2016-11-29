@@ -12,10 +12,8 @@ trait BeforeAndAfterEachFixtures extends AsyncTestSuite {
 
         complete {
             super.withFixture(test) onFailedThen { ex =>
-                println("Error running test with fixture: " + ex.getMessage)
-
-                throw ex
-            }// Invoke the test function
+                fail(s"Error running test with fixture. Exception [${ex.getClass.toString}]: ${ex.getMessage}")
+            }
         } lastly {
             cleanupFixtures()
         }
