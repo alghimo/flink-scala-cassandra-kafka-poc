@@ -1,7 +1,7 @@
-package org.alghimo.cassandra
+package org.alghimo.utils
 
 import com.websudos.phantom.dsl
-import org.alghimo.BeforeAndAfterEachFixtures
+import org.alghimo.cassandra.{DatabaseProvider, TestDefaults}
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 
@@ -13,12 +13,12 @@ trait DatabaseTest extends AsyncTestSuite
     with Matchers
     with OptionValues
     with BeforeAndAfterEachFixtures
-    with TestDatabaseProvider
+    with DatabaseProvider
     with TestDefaults.connector.Connector
 {
     import dsl.context
-    protected val autoCreateTimeout = 5 seconds
-    protected val autoDropTimeout   = 5 seconds
+    protected lazy val autoCreateTimeout = 5 seconds
+    protected lazy val autoDropTimeout   = 5 seconds
 
     override def setupFixtures(): Unit = {
         super.setupFixtures()

@@ -2,13 +2,17 @@ package org.alghimo.cassandra
 
 import com.websudos.phantom.dsl
 import org.alghimo.models.AccountGlobalStats
+import org.alghimo.utils.DatabaseTest
 
 import scala.concurrent.{Await, Future, Promise}
 
 /**
   * Created by alghimo on 11/18/2016.
   */
-trait WithAccountStatsData extends DatabaseTest {
+trait WithAccountStatsData
+    extends DatabaseTest
+    with TestDatabaseProvider
+{
     import dsl.context
     def accountGlobalStatsData: Seq[AccountGlobalStats] = Seq()
 

@@ -1,13 +1,12 @@
 package org.alghimo.cassandra
 
-import com.typesafe.config.ConfigFactory
 import com.websudos.phantom.connectors.ContactPoint
+import org.alghimo.Configurable
 
 /**
   * Created by alghimo on 11/13/2016.
   */
-object TestDefaults {
-    val config    = ConfigFactory.load()
-    val keySpace  = config.getString("cassandra.keyspace")
-    val connector = ContactPoint.embedded.noHeartbeat().keySpace(keySpace)
+object TestDefaults extends Configurable {
+    lazy protected val keySpace  = config.getString("cassandra.keyspace")
+    lazy protected val connector = ContactPoint.embedded.noHeartbeat().keySpace(keySpace)
 }

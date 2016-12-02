@@ -19,12 +19,12 @@ class ConcreteScoreService extends ProductionDatabase with java.io.Serializable 
 
     // Compose all the partial functions to score a transaction
     private final lazy val transactionScore = enrichTransaction andThen addHistoricalData andThen getScore
-    private final lazy val DEFAULT_STATS = HistoricalStats(0L, 0.0, 0.0)
+    private final lazy val DEFAULT_STATS    = HistoricalStats(0L, 0.0, 0.0)
 
     // Used to parse json into case classes
     private final val gson = new Gson
 
-    def scoreTransaction(strTransaction: String) = {
+    def scoreTransaction(strTransaction: String): Option[TransactionScore] = {
         val transaction = gson.fromJson(strTransaction, classOf[BaseTransaction]).copy(created = System.nanoTime())
 
         transactionScore(transaction)
@@ -45,7 +45,7 @@ class ConcreteScoreService extends ProductionDatabase with java.io.Serializable 
     }
 
     private final val addHistoricalData: PartialFunction[EnrichedTransaction, Future[TransactionWithHistory]] = {
-        case t: EnrichedTransaction => {
+        case t: EnrichedTransaction =>
             val acc2accStatsFuture     = database.accountToAccountTransactions.getByAccounts(t.srcAccount, t.dstAccount)
             val accStatsFuture         = database.accountStats.getByAccount(t.srcAccount)
             val acc2countryStatsFuture = database.accountToCountryTransactions.getByAccountAndCountry(t.srcAccount, t.dstCountry)
@@ -59,7 +59,7 @@ class ConcreteScoreService extends ProductionDatabase with java.io.Serializable 
 
             allStatsFuture.onComplete({
                 case Failure(ex) => transactionWithHistoryPromise.failure(ex)
-                case Success((acc2accOpt, accOpt, acc2countryOpt)) => {
+                case Success((acc2accOpt, accOpt, acc2countryOpt)) =>
                     val acc2accStats     = acc2accOpt.map(t => HistoricalStats(t.numTransacs, t.sumAmounts, t.sumAmountsSqr))
                     val accStats         = accOpt.map(t => HistoricalStats(t.numTransacs, t.sumAmounts, t.sumAmountsSqr))
                     val acc2countryStats = acc2countryOpt.map(t => HistoricalStats(t.numTransacs, t.sumAmounts, t.sumAmountsSqr))
@@ -78,19 +78,17 @@ class ConcreteScoreService extends ProductionDatabase with java.io.Serializable 
                         countryStats = acc2countryStats,
                         created      = t.created
                     ))
-                }
             })
 
             transactionWithHistoryPromise.future
-        }
     }
 
     private final val getScore: PartialFunction[Future[TransactionWithHistory], Option[TransactionScore]] = {
-        case f: Future[TransactionWithHistory] => {
+        case f: Future[TransactionWithHistory] =>
             val scorePromise: Promise[TransactionScore] = Promise()
             f.onComplete({
                 case Failure(ex) => scorePromise.failure(ex)
-                case Success(t: TransactionWithHistory) => {
+                case Success(t: TransactionWithHistory) =>
                     /**
                       * Calculate risk based on the destination account.
                       * If there are no stats from the source to the destination account,
@@ -120,7 +118,6 @@ class ConcreteScoreService extends ProductionDatabase with java.io.Serializable 
                         score             = accountRisk * 0.5 + countryRisk * 0.5,
                         timeToScoreMillis = "%.2f".format((System.nanoTime() - t.created) / 1000000.0)
                     ))
-                }
             })
 
             /**
@@ -129,22 +126,19 @@ class ConcreteScoreService extends ProductionDatabase with java.io.Serializable 
             try {
                 Some(Await.result(scorePromise.future, 1 second))
             } catch {
-                case e: TimeoutException => {
+                case e: TimeoutException =>
                     logger.info("Timedout scoring transaction")
                     None
-                }
-                case e: InterruptedException => {
+                case e: InterruptedException =>
                     logger.info("Interrupted while scoring transaction")
                     None
-                }
             }
-        }
     }
 
     private def amountRisk(amount:Double, mayBeStats: Option[HistoricalStats]): Double = {
         mayBeStats match {
             case None => 1.0
-            case Some(stats) => {
+            case Some(stats) =>
                 val avgAmountToAccount = stats.sumAmounts / stats.numTransacs
                 // sqrt( (sum(x^2)/N) - (mean(x))^2 )
                 val stddevToAccount = Math.sqrt(stats.sumAmountsSqr / stats.numTransacs - Math.pow(stats.sumAmounts / stats.numTransacs, 2))
@@ -154,10 +148,10 @@ class ConcreteScoreService extends ProductionDatabase with java.io.Serializable 
                 /**
                   * Chebyshev's inequality.
                   * Given m=mean, s=stddev and k=number of std devs, AT LEAST a percentage of (1 - 1/k ^ 2)
-                  * will be contained within the interval m +- ks.
+                  * will be contained within the interval m +- k*s.
                   * If the amount has at least 90% of amounts below, we consider it risky (1.0).
                   * If it has at least 80% of amounts below, we will interpolate it linearly (0.8=0.0, 0.85=0.5, 0.90=1.0)
-                  */
+                  **/
                 val minPercentOfTransactionsBelow: Double = 1 - 1 / (numStdDevs * numStdDevs)
                 if (minPercentOfTransactionsBelow > 0.9) {
                     1.0
@@ -168,7 +162,6 @@ class ConcreteScoreService extends ProductionDatabase with java.io.Serializable 
                 } else {
                     0.0
                 }
-            }
         }
     }
 

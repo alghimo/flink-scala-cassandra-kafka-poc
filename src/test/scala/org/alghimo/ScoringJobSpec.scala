@@ -1,5 +1,6 @@
 package org.alghimo
 
+import org.alghimo.utils.KafkaTest
 import org.scalatest.FlatSpec
 //import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig, KafkaUnavailableException}
 import org.alghimo.cassandra.{WithAccountStatsData, WithAccountToAccountTransactionsData, WithAccountToCountryTransactionsData}
@@ -7,10 +8,6 @@ import org.alghimo.models.{AccountGlobalStats, AccountToAccountTransaction, Acco
 import org.alghimo.services.TestScoreService
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.scalatest.Matchers
-
-object TestableScoringJob extends AbstractScoringJob with TestKafkaProperties with TestScoreService with java.io.Serializable {
-    override protected def getExecutionEnv(): StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment(1)
-}
 
 /**
   * Created by alghimo on 11/20/2016.
@@ -58,10 +55,14 @@ class ScoringJobSpec
     behavior of "ConcreteScoringJob"
 
     it should "consume the transactions from kafka and publish the scored transactions" in {
+        val testableJob = new AbstractScoringJob with TestKafkaProperties with TestScoreService with java.io.Serializable {
+            override protected def getExecutionEnv(): StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment(1)
+        }
         val jsonTransactions   = baseTransactions.map(gson.toJson(_))
         val scoredTransactions = jsonTransactions.map(TestScoreService.scoreTransaction(_).get)
 
-        TestableScoringJob.run()
+        testableJob.run()
+        //TestableScoringJob.run()
 
         val generatedMessages = getMessagesInTopic(SCORED_TRANSACTIONS_TOPIC, scoredTransactions.size)
         generatedMessages should contain allElementsOf scoredTransactions

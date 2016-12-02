@@ -37,7 +37,7 @@ abstract class ConcreteAccountStats extends AccountStats with RootConnector {
         }
         currentStats.onComplete({
             case Failure(ex)   => statsPromise.failure(ex)
-            case Success(None) => {
+            case Success(None) =>
                 val res = update()
                     .where(_.account eqs t.account)
                     .modify(_.sumAmounts setTo t.sumAmounts)
@@ -47,8 +47,7 @@ abstract class ConcreteAccountStats extends AccountStats with RootConnector {
                     .future()
 
                 handleUpdate(res, isInsert = true)
-            }
-            case Success(Some(accStats: AccountGlobalStats)) => {
+            case Success(Some(accStats: AccountGlobalStats)) =>
                 val res = update()
                     .where(_.account eqs t.account)
                     .modify(_.sumAmounts setTo (accStats.sumAmounts + t.sumAmounts))
@@ -58,7 +57,6 @@ abstract class ConcreteAccountStats extends AccountStats with RootConnector {
                     .future()
 
                 handleUpdate(res, isInsert = false)
-            }
         })
 
         statsPromise.future
@@ -71,40 +69,3 @@ abstract class ConcreteAccountStats extends AccountStats with RootConnector {
             .one()
     }
 }
-
-/*
-// VERSION WITH COUNTERS
-class AccountStats extends CassandraTable[ConcreteAccountStats, AccountGlobalStats]{
-
-    object account extends StringColumn(this) with PrimaryKey[String]
-    object sumAmounts extends CounterColumn(this)
-    object sumAmountsSqr extends CounterColumn(this)
-    object numTransacs extends CounterColumn(this)
-
-    def fromRow(row: Row): AccountGlobalStats = {
-        AccountGlobalStats(
-            account(row),
-            sumAmounts(row) / 100.0,
-            sumAmountsSqr(row) / 100.0,
-            numTransacs(row)
-        )
-    }
-}
-
-abstract class ConcreteAccountStats extends AccountStats with RootConnector {
-    def store(t: AccountGlobalStats): Future[ResultSet] = {
-        update
-            .where(_.account eqs t.account)
-            .modify(_.sumAmounts increment Math.round(t.sumAmounts * 100))
-            .and(_.sumAmountsSqr increment Math.round(t.sumAmountsSqr) * 100)
-            .and(_.numTransacs increment t.numTransacs)
-            .future()
-    }
-
-    def getByAccount(src: String): Future[Option[AccountGlobalStats]] = {
-        select
-            .where(_.account eqs src)
-            .one()
-    }
-}
-*/

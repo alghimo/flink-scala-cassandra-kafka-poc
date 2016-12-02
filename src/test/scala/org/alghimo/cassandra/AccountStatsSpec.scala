@@ -1,6 +1,7 @@
 package org.alghimo.cassandra
 
 import org.alghimo.models.AccountGlobalStats
+import org.alghimo.utils.DatabaseTest
 import org.scalatest.{AsyncFlatSpec, Inside}
 /**
   * Created by alghimo on 11/13/2016.
@@ -8,6 +9,7 @@ import org.scalatest.{AsyncFlatSpec, Inside}
 class AccountStatsSpec
     extends AsyncFlatSpec
     with DatabaseTest
+    with TestDatabaseProvider
     with Inside
 {
     behavior of "AccountStats"

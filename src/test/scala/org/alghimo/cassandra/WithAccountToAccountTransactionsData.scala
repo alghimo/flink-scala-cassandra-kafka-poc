@@ -2,12 +2,16 @@ package org.alghimo.cassandra
 
 import com.websudos.phantom.dsl
 import org.alghimo.models.AccountToAccountTransaction
+import org.alghimo.utils.DatabaseTest
 
 import scala.concurrent.{Await, Future, Promise}
 /**
   * Created by alghimo on 11/18/2016.
   */
-trait WithAccountToAccountTransactionsData extends DatabaseTest {
+trait WithAccountToAccountTransactionsData
+    extends DatabaseTest
+    with TestDatabaseProvider
+{
     import dsl.context
 
     def accountToAccountTransactionsData: Seq[AccountToAccountTransaction] = Seq()

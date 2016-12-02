@@ -1,6 +1,7 @@
 package org.alghimo.cassandra
 
 import org.alghimo.models.AccountToAccountTransaction
+import org.alghimo.utils.DatabaseTest
 import org.scalatest.{AsyncFlatSpec, Inside}
 
 /**
@@ -9,6 +10,7 @@ import org.scalatest.{AsyncFlatSpec, Inside}
 class AccountToAccountTransactionsSpec
     extends AsyncFlatSpec
     with DatabaseTest
+    with TestDatabaseProvider
     with Inside
 {
     behavior of "AccountStats"
@@ -91,9 +93,9 @@ class AccountToAccountTransactionsSpec
             val stats = maybeStats.get
 
             inside(stats) {
-                case AccountToAccountTransaction(srcAccount, dstAccount, sumAmounts, sumAmountsSqr, numTransacs) =>
-                    srcAccount    shouldEqual resultingStats.srcAccount
-                    dstAccount    shouldEqual resultingStats.dstAccount
+                case AccountToAccountTransaction(src, dst, sumAmounts, sumAmountsSqr, numTransacs) =>
+                    src           shouldEqual resultingStats.srcAccount
+                    dst           shouldEqual resultingStats.dstAccount
                     sumAmounts    shouldEqual resultingStats.sumAmounts
                     sumAmountsSqr shouldEqual resultingStats.sumAmountsSqr
                     numTransacs   shouldEqual resultingStats.numTransacs

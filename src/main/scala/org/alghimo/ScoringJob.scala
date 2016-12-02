@@ -16,19 +16,19 @@ import org.slf4j.LoggerFactory
   */
 abstract class AbstractScoringJob extends KafkaProperties with ScoreServiceProvider with java.io.Serializable {
     protected def getExecutionEnv(): StreamExecutionEnvironment
-    def run(args: Array[String] = Array.empty): JobExecutionResult = {
-        val env = getExecutionEnv()
 
+    def run(args: Array[String] = Array.empty): JobExecutionResult = {
+        val env    = getExecutionEnv()
         val stream = doRun(env)
 
         env.execute("Score Transactions")
     }
 
-    def doRun(env: StreamExecutionEnvironment) = {
+    def doRun(env: StreamExecutionEnvironment): StreamExecutionEnvironment = {
         env
             .addSource(kafkaStringConsumer(TRANSACTIONS_TO_SCORE_TOPIC))
             .map(scoreService.scoreTransaction _)
-            .filter(!_.isEmpty)
+            .filter(_.isDefined)
             .map(scoreToJsonMapper)
             .addSink(kafkaStringProducer(SCORED_TRANSACTIONS_TOPIC))
 
@@ -36,13 +36,13 @@ abstract class AbstractScoringJob extends KafkaProperties with ScoreServiceProvi
     }
 
     protected final val scoreToJsonMapper = new RichMapFunction[Option[TransactionScore], String]() {
-        private final val logger       = LoggerFactory.getLogger("org.alghimo.fraudpoc.transPerSecond");
+        private final val logger       = LoggerFactory.getLogger("org.alghimo.fraudpoc.transPerSecond")
         private val scoredTransactions = new LongCounter()
         private lazy val startTime     = System.currentTimeMillis()
         private var lastIntervalCount  = 0L
         private var statsScheduled     = false
 
-        val task = (accum: LongCounter) => new Runnable {
+        protected val task = (accum: LongCounter) => new Runnable {
             def run() = {
                 if (accum.getLocalValue > lastIntervalCount) {
                     val ellapsed = (System.currentTimeMillis() - startTime) / 1000.0
@@ -54,7 +54,7 @@ abstract class AbstractScoringJob extends KafkaProperties with ScoreServiceProvi
 
         override def open(parameters: Configuration): Unit = getRuntimeContext.addAccumulator("scored-transactions", scoredTransactions)
 
-        def map(score: Option[TransactionScore]) = {
+        override def map(score: Option[TransactionScore]) = {
             if (!statsScheduled) {
                 doSchedule(this.scoredTransactions)
             }

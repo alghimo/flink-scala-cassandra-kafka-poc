@@ -1,5 +1,66 @@
-A Flink application project using Scala and SBT.
+# Sample Flink Application using Scala, Kafka and Cassandra.
 
-To run and test your application use SBT invoke: 'sbt run'
+The app performs real-time scoring of transactions based on historical data. It's made of two jobs:
 
-In order to run your application from within IntelliJ, you have to select the classpath of the 'mainRunner' module in the run/debug configurations. Simply open 'Run -> Edit configurations...' and then select 'mainRunner' from the Use classpath of module dropbox.
+## Scoring Job:
+
+The high level process is as follows:
+- Reads incoming transactions from Kafka.
+- Enriches the transactions with calculated fields (for instance, extracts the country and the bank from the account)
+- Enriches the transactions with historical data from Cassandra
+- Calculates a score which represents the risk for the transaction, 1.0 being "maximum risk" and 0.0 "no risk"
+- Write the scored transaction to another Kafka topic
+
+The incoming transactions in Kafka are expected to be in Json format, and contain the following fields:
+- id: ID of the transaction
+- srcAccount: Source account
+- dstAccount: Destination account
+- amount: Amoun of the transaction
+
+The generated transactions have the same schema, plus:
+- score: Calculated score for the transaction. It's just based on z-scores
+- timeToScoreMillis: Total latency (in milliseconds), since the transaction got into the system until it's ready to be written in Kafka.
+
+## Update History Job
+
+This second job will take the scored transactions, and if they are not too risky, will update the historical data we have in Cassandra.
+The process is:
+- Read the Scored transactions topic
+- Filter out transactions with a score greater than 0.8
+- Update the Cassandra tables.
+
+## Cassandra Tables
+
+The three Cassandra tables are quite simple, they just hold the necessary data to have the average and standard deviation,
+in order to calculate the z-scores.
+
+These are the queries to create the keyspace and the tables:
+```
+CREATE KEYSPACE fraudpoc
+WITH replication = {'class':'SimpleStrategy', 'replication_factor' : 2};
+
+CREATE TABLE AccountStats (
+    account ASCII PRIMARY KEY,
+    sumAmounts DOUBLE,
+    sumAmountsSqr DOUBLE,
+    numTransacs BIGINT
+);
+
+CREATE TABLE AccountToCountryTransactions (
+    srcAccount ASCII,
+    dstCountry ASCII,
+    sumAmounts DOUBLE,
+    sumAmountsSqr DOUBLE,
+    numTransacs BIGINT,
+    PRIMARY KEY (srcAccount, dstCountry)
+);
+
+CREATE TABLE AccountToAccountTransactions (
+    srcAccount ASCII,
+    dstAccount ASCII,
+    sumAmounts DOUBLE,
+    sumAmountsSqr DOUBLE,
+    numTransacs BIGINT,
+    PRIMARY KEY (srcAccount, dstAccount)
+);
+```

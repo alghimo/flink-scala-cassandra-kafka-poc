@@ -1,12 +1,12 @@
-package org.alghimo
+package org.alghimo.utils
 
-import org.scalatest.AsyncTestSuite
+import org.scalatest.{AsyncTestSuite, FutureOutcome}
 
 /**
   * Created by alghimo on 11/20/2016.
   */
 trait BeforeAndAfterEachFixtures extends AsyncTestSuite {
-    override def withFixture(test: NoArgAsyncTest) = {
+    override def withFixture(test: NoArgAsyncTest): FutureOutcome = {
 
         setupFixtures()
 

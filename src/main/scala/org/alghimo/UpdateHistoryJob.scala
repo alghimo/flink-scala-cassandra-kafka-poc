@@ -19,14 +19,13 @@ import scala.concurrent.Future
   * Created by alghimo on 9/13/2016.
   */
 abstract class AbstractUpdateHistoryJob extends KafkaProperties with Configurable {
-    private final val failedLogger = LoggerFactory.getLogger("org.alghimo.fraudpoc.history.failedUpdates")
+    private final lazy val failedLogger = LoggerFactory.getLogger("org.alghimo.fraudpoc.history.failedUpdates")
 
     def run(args: Array[String] = Array.empty): JobExecutionResult = {
         val env = StreamExecutionEnvironment.getExecutionEnvironment
 
         env
             .addSource(kafkaStringConsumer(SCORED_TRANSACTIONS_TOPIC))
-
             .map(gson.fromJson(_, classOf[TransactionScore]))
             .filter(_.score < 0.8)
             .map(updateStatsFromScore)
@@ -37,17 +36,17 @@ abstract class AbstractUpdateHistoryJob extends KafkaProperties with Configurabl
 
     private final val updateStatsFromScore = new RichMapFunction[TransactionScore, Unit]() {
         import dsl.context
-        private val savedScores       = new LongCounter()
-        private val numInserted       = new LongCounter()
-        private val numUpdated        = new LongCounter()
-        private val failedSaves       = new LongCounter()
+        private lazy val savedScores       = new LongCounter()
+        private lazy val numInserted       = new LongCounter()
+        private lazy val numUpdated        = new LongCounter()
+        private lazy val failedSaves       = new LongCounter()
         private lazy val startTime    = System.currentTimeMillis()
         private var lastIntervalCount = 0L
         private var statsScheduled    = false
 
-        private final val task = (accum: LongCounter) => new Runnable {
+        private final lazy val task = (accum: LongCounter) => new Runnable {
             private final val savedLogger = LoggerFactory.getLogger("org.alghimo.fraudpoc.history.savedPerSecond")
-            def run() = {
+            def run(): Unit = {
                 if (accum.getLocalValue > lastIntervalCount) {
                     val ellapsed = (System.currentTimeMillis() - startTime) / 1000.0
                     savedLogger.info("saved last second: " + (accum.getLocalValue - lastIntervalCount) + " - AVG: " + (accum.getLocalValue / ellapsed) + " - inserts: " + numInserted.getLocalValue + " - updates: " + numUpdated.getLocalValue)
@@ -58,7 +57,7 @@ abstract class AbstractUpdateHistoryJob extends KafkaProperties with Configurabl
 
         override def open(parameters: Configuration): Unit = getRuntimeContext.addAccumulator("saved-scores", savedScores)
 
-        def map(s: TransactionScore) = {
+        override def map(s: TransactionScore): Unit = {
             if (!statsScheduled) {
                 doSchedule(this.savedScores)
             }
@@ -76,22 +75,19 @@ abstract class AbstractUpdateHistoryJob extends KafkaProperties with Configurabl
             handleFuture(acc2CountryStatsFuture, "Account to Country")
         }
 
-        def handleFuture(f: Future[Boolean], element: String) = {
+        private def handleFuture(f: Future[Boolean], element: String) = {
             f.onFailure({
-                case ex: Throwable => {
+                case ex: Throwable =>
                     failedLogger.info(s"Failed saving ${element} stats")
                     this.failedSaves.add(1)
-                }
             })
             f.onSuccess({
-                case false => {
+                case false =>
                     this.numUpdated.add(1)
                     this.savedScores.add(1)
-                }
-                case true => {
+                case true =>
                     this.numInserted.add(1)
                     this.savedScores.add(1)
-                }
             })
         }
 
